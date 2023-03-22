@@ -1,22 +1,32 @@
 
 # Spikeinterface questions
-A flask app based on OpenAI and LangChain to answer questions in the documentation of spikeinterface.
+A chatbot to answer documentations in spikeinterface.
+
+This is a flask app that uses LangChain and OpenAI model for answering questions using the documentation of spikeinterface.
 
 ## How to run the app locally?
+```bash
 flask --app spikeinterface_chatbot.app run
+```
 
 ## Docker
+
 ## How to build the docker image
+```bash
 build -t spikeinterface_chatbot_container .
+```
 Where the -t adds the name as a tag of the docker file so it can be referenced later.
 
 ## How to run the app from docker
+```bash
 docker run -d -p 5000:80  spikeinterface_chatbot_container
+```
 
 Where the -d is the detach command (so you get back your terminal) and the -p is mapping port 5000 in the local computer to port 80 on the container.
 
 ## How to push a docker container to github register container
+```bash
 docker push ghcr.io/{USERNAME}/spikeinterface_chatbot_container:latest
-
 docker tag spikeinterface_chatbot_container ghcr.io/{USERNAME}/spikeinterface_chatbot_container:latest
 docker push ghcr.io/{USERNAME}/spikeinterface_chatbot_container:latest
+```
