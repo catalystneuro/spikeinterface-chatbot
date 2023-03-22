@@ -3,12 +3,13 @@ from pathlib import Path
 from langchain.vectorstores import Chroma
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chains.vector_db_qa.base import VectorDBQA
+from langchain.chains import ChatVectorDBChain
 from langchain.llms.openai import OpenAI
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.document_loaders import DirectoryLoader
 
 
-def query_documentation(query: str, persist_directory: str) -> str:
+def query_documentation(query: str, chat_history: list, persist_directory: str) -> str:
     """
     Queries the current database for an answer to the question.
 
@@ -37,9 +38,10 @@ def query_documentation(query: str, persist_directory: str) -> str:
     chroma_vectorstore = Chroma(persist_directory=str(persist_directory), embedding_function=embedings)
     model_name = "gpt-3.5-turbo"  # Cheaper than default davinci
     llm = OpenAI(temperature=0, model_name=model_name)
-    question_and_answer_chain = VectorDBQA.from_chain_type(llm, vectorstore=chroma_vectorstore)
+    question_and_answer_chain = ChatVectorDBChain.from_llm(llm=llm, vectorstore=chroma_vectorstore)
+    result = question_and_answer_chain({"question": query, "chat_history": chat_history})
 
-    return question_and_answer_chain.run(query)
+    return result["answer"]
 
 
 def generate_chroma_database(read_the_docs_path: str, persist_directory: str) -> None:
