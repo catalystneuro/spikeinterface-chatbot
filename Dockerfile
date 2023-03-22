@@ -20,4 +20,4 @@ RUN pip install -e .
 EXPOSE 80
 
 # Run app.py when the container launches
-CMD ["flask", "--app", "spikeinterface_questions.app", "run", "--host", "0.0.0.0", "--port", "80"]
+CMD ["flask", "--app", "spikeinterface_chatbot.app", "run", "--host", "0.0.0.0", "--port", "80"]

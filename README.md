@@ -9,11 +9,17 @@ This is a flask app that uses LangChain and OpenAI model for answering questions
 flask --app spikeinterface_chatbot.app run
 ```
 
+Note that for running the app locally your OpenAI key should be an environment variable:
+
+```bash
+export OPENAI_API_KEY="your_key_goes_here"
+```
+
 ## Docker
 
 ## How to build the docker image
 ```bash
-build -t spikeinterface_chatbot_container .
+docker build -t spikeinterface_chatbot_container .
 ```
 Where the -t adds the name as a tag of the docker file so it can be referenced later.
 
@@ -21,8 +27,13 @@ Where the -t adds the name as a tag of the docker file so it can be referenced l
 ```bash
 docker run -d -p 5000:80  spikeinterface_chatbot_container
 ```
-
 Where the -d is the detach command (so you get back your terminal) and the -p is mapping port 5000 in the local computer to port 80 on the container.
+
+Note that for running the docker container locally you will need to pass your OpenAI key as an environment variable:
+
+```bash
+docker run -p 5000:80 --env OPENAI_API_KEY=your_key_goes_here
+```
 
 ## How to push a docker container to github register container
 ```bash
