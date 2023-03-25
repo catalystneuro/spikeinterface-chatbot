@@ -28,13 +28,13 @@
             border-radius: 10px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             margin: 20px auto;
-            max-width: 600px;
+            max-width: 800px;
             padding: 20px;
             background-color: #fff;
         }
 
         #chat-history {
-            height: 400px;
+            height: 700px;
             overflow-y: scroll;
             margin-bottom: 20px;
             padding: 5px;
@@ -57,10 +57,10 @@
 
         /* Bot message */
         .bot-message {
-            background-color: #e2ffe2;
+            background-color: #ffffff;
             color: #555;
             align-self: flex-start;
-            margin-right: 40%;
+            margin-right: 20%;
         }
 
         /* Chat input form */
@@ -95,6 +95,21 @@
 
         input[type="submit"]:hover {
             background-color: #3e4f7c;
+        }
+
+        /* Markdown styles */
+        pre {
+            background-color: #f5f5f5;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+
+        code {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 14px;
         }
     </style>
 </head>
