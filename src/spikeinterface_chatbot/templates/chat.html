@@ -1,12 +1,16 @@
 <!DOCTYPE html>
 <html>
+<head>
+    <!-- Other head elements -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/1.9.1/showdown.min.js"></script>
+</head>
 
 <head>
     <title>Spikeinterface chat</title>
     <style>
         /* Global styles */
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
             background-color: #f5f5f5;
@@ -20,9 +24,9 @@
         }
 
         #chat {
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            box-shadow: 0 0 10px #ccc;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             margin: 20px auto;
             max-width: 600px;
             padding: 20px;
@@ -33,12 +37,12 @@
             height: 400px;
             overflow-y: scroll;
             margin-bottom: 20px;
+            padding: 5px;
         }
 
         /* Chat message */
         .message {
-            border: 1px solid #ccc;
-            border-radius: 5px;
+            border-radius: 10px;
             margin-bottom: 10px;
             padding: 10px;
         }
@@ -47,12 +51,16 @@
         .user-message {
             background-color: #f1f1f1;
             color: #555;
+            align-self: flex-end;
+            margin-left: 40%;
         }
 
         /* Bot message */
         .bot-message {
             background-color: #e2ffe2;
             color: #555;
+            align-self: flex-start;
+            margin-right: 40%;
         }
 
         /* Chat input form */
@@ -69,6 +77,7 @@
             border: none;
             background-color: #f5f5f5;
             color: #555;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         input[type="submit"] {
@@ -80,6 +89,7 @@
             font-size: 16px;
             margin-left: 10px;
             padding: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transition: background-color 0.3s ease-in-out;
         }
 
@@ -93,10 +103,12 @@
     <div id="chat">
         <h1>Spikeinterface chat</h1>
         <div id="chat-history"></div>
-        <form method="POST"> <input type="text" name="message" placeholder="Type your message here..."> <input
-                type="submit" value="Send"> </form>
+        <form id="chat-form" method="POST">
+            <input type="text" name="message" placeholder="Type your message here...">
+            <input type="submit" value="Send">
+        </form>
     </div>
-    <script> const chatHistory = document.querySelector('#chat-history'); const form = document.querySelector('form'); form.addEventListener('submit', event => { event.preventDefault(); const message = document.querySelector('input[name="message"]').value; chatHistory.innerHTML += ` <div class="message user-message"> <p><strong>Question:</strong> ${message}</p> </div> `; fetch('/', { method: 'POST', body: new FormData(form) }).then(response => response.text()).then(data => { chatHistory.innerHTML += ` <div class="message bot-message"> <p><strong>Answer:</strong> ${data}</p> </div> `; form.reset(); chatHistory.scrollTop = chatHistory.scrollHeight; }); }); </script>
+    <script src="{{ url_for('static', filename='chat.js') }}"></script>
 </body>
 
 </html>
