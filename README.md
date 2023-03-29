@@ -32,7 +32,7 @@ Where the -d is the detach command (so you get back your terminal) and the -p is
 Note that for running the docker container locally you will need to pass your OpenAI key as an environment variable:
 
 ```bash
-docker run -p 5000:80 --env OPENAI_API_KEY=your_key_goes_here
+docker run -d -p 5000:80 -e OPENAI_API_KEY=your_key_goes_here -e QDRANT_API_KEY=your_quadrant_api_key_goes_here spikeinterface_chatbot_container
 ```
 
 ### How to push a docker container to github register container
