@@ -1,14 +1,43 @@
 from pathlib import Path
+from typing import Optional
 
 from langchain.vectorstores import Chroma
 from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.chains.vector_db_qa.base import VectorDBQA
-from langchain.llms.openai import OpenAI
+from langchain.chains import RetrievalQA
+from langchain.chat_models import ChatOpenAI
+
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.document_loaders import DirectoryLoader
+from langchain.prompts.chat import (
+    ChatPromptTemplate,
+    SystemMessagePromptTemplate,
+    HumanMessagePromptTemplate,
+)
 
 
-def query_documentation(query: str, persist_directory: str) -> str:
+def create_prompt(system_template: Optional[str] = None) -> ChatPromptTemplate:
+    """
+    An auxiliary function to create prompts for the chatbot.
+    Making it explicit for prompt experimentation.
+    """
+
+    if system_template is None:
+        system_template = """Use the following pieces of context to answer the users question.
+        If you don't know the answer, just say that you don't know, don't try to make up an answer. Also, return the output
+        in markdown format.
+        ----------------
+        {context}"""
+
+    messages = [
+        SystemMessagePromptTemplate.from_template(system_template),
+        HumanMessagePromptTemplate.from_template("{question}"),
+    ]
+    chat_prompt = ChatPromptTemplate.from_messages(messages)
+
+    return chat_prompt
+
+
+def query_documentation(query: str, persist_directory: str, verbose: bool = False) -> str:
     """
     Queries the current database for an answer to the question.
 
@@ -24,6 +53,8 @@ def query_documentation(query: str, persist_directory: str) -> str:
         A question described in natural language.
     persist_directory : str
         The directory where the vectorstore database is located.
+    verbose : bool, false by default:
+        If True, the function will print the intermediate steps.
 
     Returns
     -------
@@ -36,8 +67,14 @@ def query_documentation(query: str, persist_directory: str) -> str:
     embedings = OpenAIEmbeddings()
     chroma_vectorstore = Chroma(persist_directory=str(persist_directory), embedding_function=embedings)
     model_name = "gpt-3.5-turbo"  # Cheaper than default davinci
-    llm = OpenAI(temperature=0, model_name=model_name)
-    question_and_answer_chain = VectorDBQA.from_chain_type(llm, vectorstore=chroma_vectorstore)
+    max_tokens = None
+    llm = ChatOpenAI(temperature=0, model_name=model_name, max_tokens=max_tokens)
+    retriever = chroma_vectorstore.as_retriever()
+    chat_prompt = create_prompt()
+    chain_type_kwargs = dict(prompt=chat_prompt)
+    question_and_answer_chain = RetrievalQA.from_chain_type(
+        llm, chain_type_kwargs=chain_type_kwargs, retriever=retriever, verbose=verbose
+    )
 
     return question_and_answer_chain.run(query)
 
