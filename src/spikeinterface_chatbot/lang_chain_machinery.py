@@ -1,40 +1,18 @@
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 
 from langchain.vectorstores import Chroma
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chains import RetrievalQA
 from langchain.chat_models import ChatOpenAI
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.document_loaders import DirectoryLoader
 from langchain.prompts.chat import (
     ChatPromptTemplate,
     SystemMessagePromptTemplate,
     HumanMessagePromptTemplate,
 )
 
-
-def create_prompt(system_template: Optional[str] = None) -> ChatPromptTemplate:
-    """
-    An auxiliary function to create prompts for the chatbot.
-    Making it explicit for prompt experimentation.
-    """
-
-    if system_template is None:
-        system_template = """Use the following pieces of context to answer the users question.
-        If you don't know the answer, just say that you don't know, don't try to make up an answer. Also, return the output
-        in markdown format.
-        ----------------
-        {context}"""
-
-    messages = [
-        SystemMessagePromptTemplate.from_template(system_template),
-        HumanMessagePromptTemplate.from_template("{question}"),
-    ]
-    chat_prompt = ChatPromptTemplate.from_messages(messages)
-
-    return chat_prompt
+from .database_services import retrieve_qdrant_database
 
 
 def query_documentation(query: str, persist_directory: str, verbose: bool = False) -> str:
@@ -64,12 +42,11 @@ def query_documentation(query: str, persist_directory: str, verbose: bool = Fals
     persist_directory = Path(persist_directory)
     assert persist_directory.exists() and persist_directory.is_dir()
 
-    embedings = OpenAIEmbeddings()
-    chroma_vectorstore = Chroma(persist_directory=str(persist_directory), embedding_function=embedings)
+    vectorstore = retrieve_qdrant_database()
     model_name = "gpt-3.5-turbo"  # Cheaper than default davinci
-    max_tokens = None
+    max_tokens = None  # Exposed to experiment with different values
     llm = ChatOpenAI(temperature=0, model_name=model_name, max_tokens=max_tokens)
-    retriever = chroma_vectorstore.as_retriever()
+    retriever = vectorstore.as_retriever()
     chat_prompt = create_prompt()
     chain_type_kwargs = dict(prompt=chat_prompt)
     question_and_answer_chain = RetrievalQA.from_chain_type(
@@ -79,28 +56,23 @@ def query_documentation(query: str, persist_directory: str, verbose: bool = Fals
     return question_and_answer_chain.run(query)
 
 
-def generate_chroma_database(read_the_docs_path: str, persist_directory: str) -> None:
+def create_prompt(system_template: Optional[str] = None) -> ChatPromptTemplate:
     """
-    Auxiliary function to generate the croma database (vectorstore).
-
-    Parameters
-    ----------
-    read_the_docs_path : str
-        The paths with the read the docs documentation in html
-    persist_directory : str
-        The directory where the vectorstore database is located.
-
+    An auxiliary function to create prompts for the chatbot.
+    Making it explicit for prompt experimentation.
     """
-    read_the_docs_path = Path(read_the_docs_path)
-    assert read_the_docs_path.exists() and read_the_docs_path.is_dir()
 
-    loader = DirectoryLoader(read_the_docs_path, glob="**/*.html")
-    docs = []
-    for loader in [loader]:
-        docs.extend(loader.load())
-    sub_docs = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=0).split_documents(docs)
+    if system_template is None:
+        system_template = """Use the following pieces of context to answer the users question.
+        If you don't know the answer, just say that you don't know, don't try to make up an answer. Also, return the output
+        in markdown format.
+        ----------------
+        {context}"""
 
-    embedings = OpenAIEmbeddings()
-    chroma_vectorstore = Chroma.from_documents(sub_docs, embedding=embedings, persist_directory=persist_directory)
-    chroma_vectorstore.persist()
-    chroma_vectorstore = None
+    messages = [
+        SystemMessagePromptTemplate.from_template(system_template),
+        HumanMessagePromptTemplate.from_template("{question}"),
+    ]
+    chat_prompt = ChatPromptTemplate.from_messages(messages)
+
+    return chat_prompt
