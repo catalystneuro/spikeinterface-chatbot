@@ -3,10 +3,78 @@ from typing import Optional, List
 import os
 
 from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.chains import RetrievalQA
+from langchain.chat_models import ChatOpenAI
 from langchain.document_loaders import DirectoryLoader
 from langchain.vectorstores import Qdrant
+from langchain.schema import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.prompts.chat import (
+    ChatPromptTemplate,
+    SystemMessagePromptTemplate,
+    HumanMessagePromptTemplate,
+)
+
+
+def create_prompt(system_template: Optional[str] = None) -> ChatPromptTemplate:
+    """
+    An auxiliary function to create prompts for the chatbot.
+    Making it explicit for prompt experimentation.
+    """
+
+    if system_template is None:
+        system_template = """Use the following pieces of context to answer the users question.
+        If you don't know the answer, just say that you don't know, don't try to make up an answer. Also, return the output
+        in markdown format.
+        ----------------
+        {context}"""
+
+    messages = [
+        SystemMessagePromptTemplate.from_template(system_template),
+        HumanMessagePromptTemplate.from_template("{question}"),
+    ]
+    chat_prompt = ChatPromptTemplate.from_messages(messages)
+
+    return chat_prompt
+
+
+def build_question_and_answer_retriever(verbose: bool = False) -> RetrievalQA:
+    """
+    Builds a question and answer retriever using the GPT-3.5-turbo model and Qdrant database.
+
+    The function retrieves the Qdrant database, initializes a ChatOpenAI instance with the GPT-3.5-turbo model,
+    and sets up a retriever with the database. It creates a chat prompt and initializes a RetrievalQA object with
+    the necessary configurations.
+
+    Parameters
+    ----------
+    verbose : bool, optional, default: False
+        If True, the function will print the intermediate steps.
+
+    Returns
+    -------
+    RetrievalQA
+        A Retrieval chain with the necessary configurations.
+    """
+
+    model_name = "gpt-3.5-turbo"  # Cheaper than default davinci
+    max_tokens = None  # Exposed to experiment with different values
+    temperature = 0.0
+    vectorstore = retrieve_qdrant_database()
+    llm = ChatOpenAI(model_name=model_name, temperature=temperature, max_tokens=max_tokens)
+    retriever = vectorstore.as_retriever()
+    chat_prompt = create_prompt()
+    return_source_documents = True  # Returns the source documents from the datbase for the context
+    chain_type_kwargs = dict(prompt=chat_prompt)
+    retrieval_qa_chain = RetrievalQA.from_chain_type(
+        llm,
+        chain_type_kwargs=chain_type_kwargs,
+        retriever=retriever,
+        return_source_documents=return_source_documents,
+        verbose=verbose,
+    )
+
+    return retrieval_qa_chain
 
 
 def retrieve_qdrant_database(
