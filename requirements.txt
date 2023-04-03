@@ -1,6 +1,6 @@
-chromadb>=0.3.11
 langchain>=0.0.123
 openai>=0.27.2
 flask>=2.2.3
 sentencepiece>=0.1.97
 beautifulsoup4>=4.11.2
+qdrant-client>=1.1.0
