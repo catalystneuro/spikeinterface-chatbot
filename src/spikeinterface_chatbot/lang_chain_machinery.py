@@ -1,10 +1,11 @@
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Set, Tuple
 
 from langchain.vectorstores import Chroma
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chains import RetrievalQA
 from langchain.chat_models import ChatOpenAI
+from langchain.schema import Document
 
 from langchain.prompts.chat import (
     ChatPromptTemplate,
@@ -15,7 +16,7 @@ from langchain.prompts.chat import (
 from .database_services import retrieve_qdrant_database
 
 
-def query_documentation(query: str, persist_directory: str, verbose: bool = False) -> str:
+def query_documentation(query: str, verbose: bool = False) -> Tuple[str, List[str]]:
     """
     Queries the current database for an answer to the question.
 
@@ -29,8 +30,6 @@ def query_documentation(query: str, persist_directory: str, verbose: bool = Fals
     ----------
     query : str
         A question described in natural language.
-    persist_directory : str
-        The directory where the vectorstore database is located.
     verbose : bool, false by default:
         If True, the function will print the intermediate steps.
 
@@ -39,8 +38,6 @@ def query_documentation(query: str, persist_directory: str, verbose: bool = Fals
     str
         An answer to the query question.
     """
-    persist_directory = Path(persist_directory)
-    assert persist_directory.exists() and persist_directory.is_dir()
 
     vectorstore = retrieve_qdrant_database()
     model_name = "gpt-3.5-turbo"  # Cheaper than default davinci
@@ -48,12 +45,39 @@ def query_documentation(query: str, persist_directory: str, verbose: bool = Fals
     llm = ChatOpenAI(temperature=0, model_name=model_name, max_tokens=max_tokens)
     retriever = vectorstore.as_retriever()
     chat_prompt = create_prompt()
+    return_source_documents = True
     chain_type_kwargs = dict(prompt=chat_prompt)
     question_and_answer_chain = RetrievalQA.from_chain_type(
-        llm, chain_type_kwargs=chain_type_kwargs, retriever=retriever, verbose=verbose
+        llm,
+        chain_type_kwargs=chain_type_kwargs,
+        retriever=retriever,
+        return_source_documents=return_source_documents,
+        verbose=verbose,
     )
 
-    return question_and_answer_chain.run(query)
+    chain_response = question_and_answer_chain(query)
+    answer_to_query = chain_response["result"]
+    source_documents = chain_response["source_documents"]
+
+    # Get link to sources
+    web_links = return_links_from_sources(source_documents)
+    return answer_to_query, web_links
+
+
+def return_links_from_sources(source_documents: List[Document]) -> List[str]:
+    source_metadata = (source.metadata for source in source_documents)
+    local_links_to_documentation = (metadata["source"] for metadata in source_metadata)
+    web_links_to_documentation = {transform_local_link_to_web_url(link) for link in local_links_to_documentation}
+
+    return list(web_links_to_documentation)
+
+
+def transform_local_link_to_web_url(local_link: str) -> str:
+    local_directory_location = "rtdocs"
+    local_link = local_link.split(local_directory_location)[1][1:]  # Remove leading slash
+    web_link = f"https://{local_link}"
+
+    return web_link
 
 
 def create_prompt(system_template: Optional[str] = None) -> ChatPromptTemplate:

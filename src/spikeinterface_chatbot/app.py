@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, request, render_template
+from flask import Flask, request, render_template, jsonify
 
 from spikeinterface_chatbot.lang_chain_machinery import query_documentation
 
@@ -10,9 +10,11 @@ app = Flask(__name__)
 @app.route("/process_message", methods=["POST"])
 def process_message():
     message = request.form["message"]
-    persist_directory = "./data/chroma_database"
-    response = query_documentation(query=message, persist_directory=persist_directory)
-    return response
+    answer_to_query, web_links = query_documentation(query=message)
+
+    response = {"answer": answer_to_query, "links": web_links}
+
+    return jsonify(response)
 
 
 @app.route("/", methods=["GET"])
