@@ -1,23 +1,20 @@
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Set, Tuple
 
 from langchain.vectorstores import Chroma
 from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.chains import RetrievalQA
-from langchain.chat_models import ChatOpenAI
 
-from langchain.prompts.chat import (
-    ChatPromptTemplate,
-    SystemMessagePromptTemplate,
-    HumanMessagePromptTemplate,
-)
-
-from .database_services import retrieve_qdrant_database
+from langchain.schema import Document
 
 
-def query_documentation(query: str, persist_directory: str, verbose: bool = False) -> str:
+from .database_services import retrieve_qdrant_database, build_question_and_answer_retriever
+
+
+def query_documentation(query: str, retriever_chain: RetrievalQA) -> dict[str, Set[str]]:
     """
-    Queries the current database for an answer to the question.
+    Queries the current RetrievalQA for an answer to the question.
+    Formats the answer and returns it to be front-end.
 
     The procedure under the hood is the following. The question is first sent to the vector store to find the
     related chunks. Those chunks as combined with the question in an `in-context-learning` or
@@ -29,50 +26,69 @@ def query_documentation(query: str, persist_directory: str, verbose: bool = Fals
     ----------
     query : str
         A question described in natural language.
-    persist_directory : str
-        The directory where the vectorstore database is located.
-    verbose : bool, false by default:
-        If True, the function will print the intermediate steps.
+
+    Returns
+    -------
+    dict
+        An answer to the query question.
+    """
+
+    chain_response = retriever_chain(query)
+    answer_to_query = chain_response["result"]
+
+    # Get link to sources
+    source_documents = chain_response["source_documents"]
+    context_documents = [document.page_content for document in source_documents]
+    web_links = return_links_from_sources(source_documents)
+
+    query_response = dict(answer_to_query=answer_to_query, web_links=web_links, context_documents=context_documents)
+    return query_response
+
+
+def return_links_from_sources(source_documents: List[Document]) -> Set[str]:
+    """
+    Converts local links in the source documents' metadata to web URLs.
+
+    The function iterates through the metadata of each source document, extracts the local link, and
+    converts it into a web URL using the `transform_local_link_to_web_url` function.
+
+    Parameters
+    ----------
+    source_documents : List[Document]
+        A list of Document objects containing the metadata with local links.
+
+    Returns
+    -------
+    Set[str]
+        A set of web URLs converted from the local links in the source documents' metadata.
+    """
+
+    source_metadata = (source.metadata for source in source_documents)
+    local_links_to_documentation = (metadata["source"] for metadata in source_metadata)
+    web_links_to_documentation = {transform_local_link_to_web_url(link) for link in local_links_to_documentation}
+
+    return web_links_to_documentation
+
+
+def transform_local_link_to_web_url(local_link: str) -> str:
+    """
+    Transforms a local link into a web URL.
+
+    This function takes a local link, removes the local directory location, and prepends "https://" to create
+    a web URL.
+
+    Parameters
+    ----------
+    local_link : str
+        A local link to be transformed into a web URL.
 
     Returns
     -------
     str
-        An answer to the query question.
+        A web URL created from the input local link.
     """
-    persist_directory = Path(persist_directory)
-    assert persist_directory.exists() and persist_directory.is_dir()
+    local_directory_location = "rtdocs"
+    local_link = local_link.split(local_directory_location)[1][1:]  # Remove leading slash
+    web_link = f"https://{local_link}"
 
-    vectorstore = retrieve_qdrant_database()
-    model_name = "gpt-3.5-turbo"  # Cheaper than default davinci
-    max_tokens = None  # Exposed to experiment with different values
-    llm = ChatOpenAI(temperature=0, model_name=model_name, max_tokens=max_tokens)
-    retriever = vectorstore.as_retriever()
-    chat_prompt = create_prompt()
-    chain_type_kwargs = dict(prompt=chat_prompt)
-    question_and_answer_chain = RetrievalQA.from_chain_type(
-        llm, chain_type_kwargs=chain_type_kwargs, retriever=retriever, verbose=verbose
-    )
-
-    return question_and_answer_chain.run(query)
-
-
-def create_prompt(system_template: Optional[str] = None) -> ChatPromptTemplate:
-    """
-    An auxiliary function to create prompts for the chatbot.
-    Making it explicit for prompt experimentation.
-    """
-
-    if system_template is None:
-        system_template = """Use the following pieces of context to answer the users question.
-        If you don't know the answer, just say that you don't know, don't try to make up an answer. Also, return the output
-        in markdown format.
-        ----------------
-        {context}"""
-
-    messages = [
-        SystemMessagePromptTemplate.from_template(system_template),
-        HumanMessagePromptTemplate.from_template("{question}"),
-    ]
-    chat_prompt = ChatPromptTemplate.from_messages(messages)
-
-    return chat_prompt
+    return web_link

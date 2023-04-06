@@ -13,6 +13,7 @@ Note that for running the app locally your OpenAI key should be an environment v
 
 ```bash
 export OPENAI_API_KEY="your_key_goes_here"
+export QDRANT_API_KEY="your_quadrant_api_key_goes_here"
 ```
 
 ## Docker
